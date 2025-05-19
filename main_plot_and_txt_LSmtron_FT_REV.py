@@ -4,6 +4,7 @@ from matplotlib.animation import FuncAnimation
 from canlib import canlib
 import time
 import threading
+import os
 
 # 통신 제어 문자
 STX = 0x02
@@ -105,7 +106,7 @@ def update_speed_graph(frame):
     global x_data, speed_data
     global last_y_update_time_speed
 
-    line_speed.set_data(x_data, ve_data)
+    line_speed.set_data(x_data, speed_data)
 
     if len(x_data) > 0:
         ax_speed.set_xlim(max(0, x_data[-1] - x_range), x_data[-1])
@@ -154,6 +155,20 @@ def update_position_graph(frame):
 
     return line_hgt,
 
+def parse_packet(buf: bytes, fixed_fmt):
+    # 1) 고정 길이( <dddffff )만 먼저 언팩
+
+    fixed_size = struct.calcsize(fixed_fmt)   # == 40 bytes
+    d1, d2, d3, f1, f2, f3, f4 = struct.unpack_from(fixed_fmt, buf, offset=0)
+
+    # 2) 이후 바이트에서 널 문자를 찾아 가변 문자열 추출
+    end = buf.find(b'\0', fixed_size)
+    if end == -1:
+        raise ValueError("널(\\0) 종단 문자가 없습니다!")
+    text = buf[fixed_size:end].decode('utf-8', errors='replace')
+
+    return (d1, d2, d3, f1, f2, f3, f4, text)
+
 ani_pos = FuncAnimation(fig_pos, update_position_graph, blit=False, interval=100)
 
 # ---------------------------------------------------
@@ -165,7 +180,16 @@ def monitor_channel(channel_number, bitrate):
     global roll_data, pitch_data, yaw_data    
     global speed_data
 
-    output_file = open("output_data.txt", "a", encoding="utf-8")
+    nowTime = time.localtime()
+
+    dir_path = f"C:\\Users\\AMS_1\\Documents\\Code\\CanCDU"
+    os.makedirs(dir_path, exist_ok=True)    
+
+    FilePath = (
+        f"output_LSmtron_{nowTime.tm_year % 100:02d}{nowTime.tm_mon:02d}{nowTime.tm_mday:02d}_"
+        f"{nowTime.tm_hour:02d}{nowTime.tm_min:02d}{nowTime.tm_sec:02d}.txt"
+        )
+    output_file = open(FilePath, mode='w', encoding="utf-8")
     start_time = time.time()    
 
     while True:
@@ -182,8 +206,10 @@ def monitor_channel(channel_number, bitrate):
             # 수신할 CAN ID를 0x107까지 확장
             valid_ids = {
                 0x101, 0x102, 0x103, 0x104,
-                0x105, 0x106, 0x107, 
-                0x108, 0x109, 0x110 
+                0x105, 0x106, 0x107, 0x108,
+                0x109, 0x10A, 0x10B, 0x10C,
+                0x10D, 0x10E, 0x10F,
+                0x110, 0x111, 0x112
             }
 
             while True:
@@ -210,15 +236,18 @@ def monitor_channel(channel_number, bitrate):
                                 prev_status_dle = NONE
 
                         if status == END:
+                            fixed_fmt = '<dddffff'
                             if len(temp_buffer) >= 40:
                                 # <fffffffffdddiffi 
                                 # double*3 + float*4 = 40바이트
-                                data = struct.unpack_from('<dddffff', temp_buffer[:40])
+                                # data = struct.unpack_from('<dddffff', temp_buffer[:40])
+                                d1, d2, d3, f1, f2, f3, f4, text = parse_packet(temp_buffer, fixed_fmt)
 
                                 # 인덱스로 파싱
-                                pos = data[0:3]    # 3 doubles (x, y, z)
-                                att = data[3:6]        # 3 floats (Roll, Pitch, Yaw, rad)
-                                speed = data[6]       # float
+                                pos = (d1, d2, d3)    # 3 doubles (x, y, z)
+                                att = (f1, f2, f3)        # 3 floats (Roll, Pitch, Yaw, rad)
+                                speed = f4       # float
+                                NMEA = text
 
                                 elapsed_time = time.time() - start_time
 
@@ -227,11 +256,12 @@ def monitor_channel(channel_number, bitrate):
                                     f"[{elapsed_time:.3f}]"
                                     f"[Pos] {pos[0]:.8f}, {pos[1]:.8f}, {pos[2]:.8f}, "
                                     f"[Att] rol: {att[0]:f}, pit: {att[1]:f}, yaw: {att[2]:f}, "
-                                    f"[Speed] {speed:.3f}"
+                                    f"[Speed] {speed:.3f},", 
+                                    NMEA
                                 )
 
                                 # CSV 라인
-                                csv_line = (
+                                csv_line = "".join([
                                     f"{elapsed_time:f},"    # timestamp
                                     f"{pos[0]:.8f},"    # lat deg 
                                     f"{pos[1]:.8f},"    # lon deg
@@ -241,8 +271,10 @@ def monitor_channel(channel_number, bitrate):
                                     f"{att[1]:f},"      # Pitch deg
                                     f"{att[2]:f},"      # Yaw deg
 
-                                    f"{speed:f}"           # speed m/s
-                                )
+                                    f"{speed:f},"           # speed m/s
+                                    f"{NMEA}"
+                                    # f"{NMEA:s}"
+                                ])
                                 output_file.write(csv_line + "\n")
                                 output_file.flush()
 

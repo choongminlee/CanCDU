@@ -188,7 +188,7 @@ def monitor_channel(channel_number, bitrate):
                 0x109, 0x10A, 0x10B, 0x10C,
                 0x10D, 0x10E, 0x10F, 0x110,
                 0x111, 0x112, 0x113, 0x114,
-                0x115, 0x116 
+                0x115, 0x116, 0x117, 0x118 
             }
 
             while True:
@@ -215,43 +215,23 @@ def monitor_channel(channel_number, bitrate):
                                 prev_status_dle = NONE
 
                         if status == END:
-                            # gpspos가 double 3개로 변경됨 => 총 76바이트
-                            # if len(temp_buffer) >= 76:
-                            # if len(temp_buffer) >= 100:
-                            # if len(temp_buffer) >= 128:
+                            # 수신 Byte 갯수
                             if len(temp_buffer) >= 128:
                                 
-                                # data = struct.unpack_from('<ffffffffffdddddddddiffi', temp_buffer[:128])
-                                data = struct.unpack_from('<ffffffffffffffffddddddiffi', temp_buffer[:128])
+                                data = struct.unpack_from('<ffffffffffdddddddddiffi', temp_buffer[:128])
 
-                                # 인덱스로 파싱
-                                # gyro = data[0:3]        # 3 floats (deg/s)
-                                # acc = data[3:6]        # 3 floats (m/s2)
-                                # temp = data[6]
+                                gyro = data[0:3]        # 3 floats (deg/s)
+                                acc = data[3:6]        # 3 floats (m/s2)
+                                temp = data[6]         # floats
 
-                                # att = data[7:10]        # 3 floats (Roll, Pitch, Yaw, rad)
-                                # vel = data[10:13]        # 3 doubles (Ve, Vn, Vu, m/s)
-                                # pos = data[13:16]        # 3 doubles (lat, lon, hgt)
-                                # gpspos = data[16:19]    # 3 doubles (x, y, z)
-                                # posFix = data[19]      # int 
-                                # heading = data[20]     # float 
-                                # speed = data[21]       # float 
-                                # moveStatus = data[22]  # int 
-                                gyro_raw = data[0:3]        # 3 floats (deg/s)
-                                acc_raw = data[3:6]        # 3 floats (m/s2)
-
-                                gyro = data[6:9]        # 3 floats (deg/s)
-                                acc = data[9:12]        # 3 floats (m/s2)
-                                temp = data[12]         # floats
-
-                                att = data[13:16]        # 3 floats (Roll, Pitch, Yaw, rad)
-                                vel = data[16:19]        # 3 doubles (Ve, Vn, Vu, m/s)
-                                pos = data[19:22]        # 3 doubles (lat, lon, hgt)
-                                # gpspos = data[22:25]    # 3 doubles (x, y, z)
-                                posFix = data[22]      # int
-                                heading = data[23]     # float
-                                speed = data[24]       # float
-                                moveStatus = data[25]  # int
+                                att = data[7:10]        # 3 floats (Roll, Pitch, Yaw, rad) 12 + 28 = 40
+                                vel = data[10:13]        # 3 doubles (Ve, Vn, Vu, m/s) 
+                                pos = data[13:16]        # 3 doubles (lat, lon, hgt) 
+                                gpspos = data[16:19]    # 3 doubles (x, y, z) 72 / 40 + 72 = 112
+                                posFix = data[19]      # int 4
+                                heading = data[20]     # float 4
+                                speed = data[21]       # float 4
+                                moveStatus = data[22]  # int 4
 
                                 elapsed_time = time.time() - start_time
 
@@ -264,8 +244,8 @@ def monitor_channel(channel_number, bitrate):
                                     f"[Att] rol: {att[0]:.3f}, pit: {att[1]:.3f}, yaw: {att[2]:.3f}, "
                                     f"[Vel] Ve: {vel[0]:.3f}, Vn: {vel[1]:.3f}, Vu: {vel[2]:.3f}, "
                                     f"[Pos] {pos[0]*R2D:.6f}, {pos[1]*R2D:.6f}, {pos[2]:.1f}, "
-                                    # f"[GPSpos] {gpspos[0]:.6f}, {gpspos[1]:.6f}, {gpspos[2]:.1f}, "
-                                    # f"[PoxFix] {posFix}, "
+                                    f"[GPSpos] {gpspos[0]:.6f}, {gpspos[1]:.6f}, {gpspos[2]:.1f}, "
+                                    f"[PoxFix] {posFix}, "
                                     # f"[Heading] {heading:.1f}, "
                                     # f"[Speed] {speed:.1f}, "
                                     # f"[MovStat] {moveStatus}"
@@ -275,13 +255,6 @@ def monitor_channel(channel_number, bitrate):
                                 # CSV 라인
                                 csv_line = (
                                     f"{elapsed_time:f},"  # timestamp
-
-                                    f"{gyro_raw[0]:f},"   #gyro_raw
-                                    f"{gyro_raw[1]:f},"   #gyro_raw
-                                    f"{gyro_raw[2]:f},"   #gyro_raw
-                                    f"{acc_raw[0]:f},"    #acc_raw
-                                    f"{acc_raw[1]:f},"    #acc_raw
-                                    f"{acc_raw[2]:f},"    #acc_raw
                                     
                                     f"{gyro[0]:f},"       #gyro
                                     f"{gyro[1]:f},"       #gyro
@@ -300,9 +273,9 @@ def monitor_channel(channel_number, bitrate):
                                     f"{pos[0]*R2D:f},"    # lat deg 
                                     f"{pos[1]*R2D:f},"    # lon deg
                                     f"{pos[2]:.3f},"      # hgt
-                                    # f"{gpspos[0]:.8f},"   # gps lat deg
-                                    # f"{gpspos[1]:.8f},"   # gps lon deg
-                                    # f"{gpspos[2]:.3f},"   # gps hgt m
+                                    f"{gpspos[0]:.8f},"   # gps lat deg
+                                    f"{gpspos[1]:.8f},"   # gps lon deg
+                                    f"{gpspos[2]:.3f},"   # gps hgt m
                                     f"{posFix},"
                                     f"{heading:f},"
                                     f"{speed:f},"
