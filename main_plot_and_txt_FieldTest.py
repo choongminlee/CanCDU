@@ -167,7 +167,7 @@ def monitor_channel(channel_number, bitrate):
     global ve_data, vn_data, vu_data
     global lat_data, lon_data, hgt_data
 
-    output_file = open("output_data.txt", "a", encoding="utf-8")
+    output_file = open("output_data_DT.txt", "a", encoding="utf-8")
     start_time = time.time()
 
     while True:
@@ -202,23 +202,23 @@ def monitor_channel(channel_number, bitrate):
                             status = START
                             temp_buffer.clear()
                         elif status == START:
-                            if prev_status_dle != DLE_STATE:
-                                if byte == ETX:
-                                    status = END
-                                elif byte == DLE:
-                                    prev_status_dle = DLE_STATE
-                                else:
-                                    temp_buffer.append(byte)
-                            else:
-                                # 바로 직전에 DLE가 있었다면 그대로 데이터 처리
-                                temp_buffer.append(byte)
+                            if prev_status_dle == DLE_STATE:          # 직전이 DLE였다면
+                                temp_buffer.append(byte)              # 그 값을 그대로 기록
                                 prev_status_dle = NONE
+                                continue                              # ← ETX 검사하면 안 됨
+                            if byte == DLE:                           # 새로 DLE 만남
+                                prev_status_dle = DLE_STATE
+                                continue
+                            if byte == ETX:                           # 패킷 끝
+                                status = END
+                            else:
+                                temp_buffer.append(byte)
 
                         if status == END:
                             # 수신 Byte 갯수
-                            if len(temp_buffer) >= 128:
+                            if len(temp_buffer) >= 152:
                                 
-                                data = struct.unpack_from('<ffffffffffdddddddddiffi', temp_buffer[:128])
+                                data = struct.unpack_from('<ffffffffffddddddddddddiffi', temp_buffer[:152])
 
                                 gyro = data[0:3]        # 3 floats (deg/s)
                                 acc = data[3:6]        # 3 floats (m/s2)
@@ -228,10 +228,12 @@ def monitor_channel(channel_number, bitrate):
                                 vel = data[10:13]        # 3 doubles (Ve, Vn, Vu, m/s) 
                                 pos = data[13:16]        # 3 doubles (lat, lon, hgt) 
                                 gpspos = data[16:19]    # 3 doubles (x, y, z) 72 / 40 + 72 = 112
-                                posFix = data[19]      # int 4
-                                heading = data[20]     # float 4
-                                speed = data[21]       # float 4
-                                moveStatus = data[22]  # int 4
+                                
+                                Pk_pos = data[19:22]
+                                posFix = data[22]      # int 4
+                                heading = data[23]     # float 4
+                                speed = data[24]       # float 4
+                                moveStatus = data[25]  # int 4
 
                                 elapsed_time = time.time() - start_time
 
@@ -242,7 +244,7 @@ def monitor_channel(channel_number, bitrate):
                                     f"[Acc] ax: {acc[0]:f},\tay: {acc[1]:f},\taz: {acc[2]:f}, "
                                     # f"[Temp] {temp}, "
                                     f"[Att] rol: {att[0]:.3f}, pit: {att[1]:.3f}, yaw: {att[2]:.3f}, "
-                                    f"[Vel] Ve: {vel[0]:.3f}, Vn: {vel[1]:.3f}, Vu: {vel[2]:.3f}, "
+                                    # f"[Vel] Ve: {vel[0]:.3f}, Vn: {vel[1]:.3f}, Vu: {vel[2]:.3f}, "
                                     f"[Pos] {pos[0]*R2D:.6f}, {pos[1]*R2D:.6f}, {pos[2]:.1f}, "
                                     f"[GPSpos] {gpspos[0]:.6f}, {gpspos[1]:.6f}, {gpspos[2]:.1f}, "
                                     f"[PoxFix] {posFix}, "
@@ -276,6 +278,9 @@ def monitor_channel(channel_number, bitrate):
                                     f"{gpspos[0]:.8f},"   # gps lat deg
                                     f"{gpspos[1]:.8f},"   # gps lon deg
                                     f"{gpspos[2]:.3f},"   # gps hgt m
+                                    f"{Pk_pos[0]:f},"   
+                                    f"{Pk_pos[1]:f},"   
+                                    f"{Pk_pos[2]:f},"   
                                     f"{posFix},"
                                     f"{heading:f},"
                                     f"{speed:f},"
@@ -321,7 +326,7 @@ def monitor_channel(channel_number, bitrate):
                                     hgt_data = hgt_data[-x_range:]
 
                                 # 사용한 152바이트 삭제
-                                temp_buffer = temp_buffer[128:]# temp_buffer[128:] #temp_buffer[116:]
+                                temp_buffer = temp_buffer[152:]# temp_buffer[128:] #temp_buffer[116:]
 
                             status = READY
 
