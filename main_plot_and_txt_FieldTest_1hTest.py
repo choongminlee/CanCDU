@@ -238,7 +238,7 @@ def monitor_channel(channel_number, bitrate):
     nowTime = time.localtime()
 
     FilePath = (
-        f"output_DT_GPSPosVel_{nowTime.tm_year % 100:02d}{nowTime.tm_mon:02d}{nowTime.tm_mday:02d}_"
+        f"LT_GPSPosVel_editKFInput_CorrecInPure_{nowTime.tm_year % 100:02d}{nowTime.tm_mon:02d}{nowTime.tm_mday:02d}_"
         f"{nowTime.tm_hour:02d}{nowTime.tm_min:02d}{nowTime.tm_sec:02d}.txt"
         )
 
