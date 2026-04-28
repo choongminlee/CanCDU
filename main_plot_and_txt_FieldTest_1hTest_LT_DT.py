@@ -81,6 +81,13 @@ DLE_STATE = 1
 
 R2D = 180.0 / 3.14159265358979323846
 
+# CanCDU packet:
+# timestamp, dt_sec, KFupdate,
+# gyro_raw[3], acc_raw[3], gyro_calib[3], gyro_fullCorr[3], temp,
+# att[3], vel[3], pos[3], gpspos[3], GyroBiasErr[3], sf_z_candidate
+CANCDU_STRUCT_FORMAT = '<ffi22f6d4f'
+CANCDU_PACKET_SIZE = struct.calcsize(CANCDU_STRUCT_FORMAT)
+
 # --------------------
 # GLOBAL DATA STORAGE
 # --------------------
@@ -238,7 +245,7 @@ def monitor_channel(channel_number, bitrate):
     nowTime = time.localtime()
 
     FilePath = (
-        f"LT_GPSPosVel_editKFInput_CorrecInPure_{nowTime.tm_year % 100:02d}{nowTime.tm_mon:02d}{nowTime.tm_mday:02d}_"
+        f"LT_IEKF_{nowTime.tm_year % 100:02d}{nowTime.tm_mon:02d}{nowTime.tm_mday:02d}_"
         f"{nowTime.tm_hour:02d}{nowTime.tm_min:02d}{nowTime.tm_sec:02d}.txt"
         )
 
@@ -263,7 +270,8 @@ def monitor_channel(channel_number, bitrate):
                 0x109, 0x10A, 0x10B, 0x10C,
                 0x10D, 0x10E, 0x10F, 0x110,
                 0x111, 0x112, 0x113, 0x114,
-                0x115, 0x116, 0x117, 0x118 
+                0x115, 0x116, 0x117, 0x118,
+                0x119, 0x11A, 0x11B, 0x11C, 
             }
 
             while True:
@@ -291,149 +299,105 @@ def monitor_channel(channel_number, bitrate):
 
                         if status == END:
                             # 수신 Byte 갯수
-                            if len(temp_buffer) >= 108:
-                            
-                                # data = struct.unpack_from('<ffffffffffffdddddd', temp_buffer[:96])
-                                data = struct.unpack_from('<ffffffffffffddddddfff', temp_buffer[:108])
-
-
-                                gyro = data[0:3]        # 3 floats (deg/s) 12
-                                acc = data[3:6]        # 3 floats (m/s2) 24
-                                # # temp = data[6]         # floats
-
-                                att = data[6:9]        # 3 floats (Roll, Pitch, Yaw, rad) 36
-                                vel = data[9:12]        # 3 floats (Ve, Vn, Vu, m/s)  48
-                                pos = data[12:15]        # 3 double (lat, lon, hgt) 48 + 24 = 72
-                                gpspos = data[15:18]    # 3 double (x, y, z) 72 + 24 = 96
-
-                                gpsvel = data[18:21] # 12
-                                # Head_VTG = data[18]     # float 4
-                                # posFix = data[19]      # int 4
+                            len_byte = CANCDU_PACKET_SIZE
+                            if len(temp_buffer) >= len_byte:
+                        
+                                data = struct.unpack_from(CANCDU_STRUCT_FORMAT, temp_buffer[:len_byte])
                                 
-                               
-                                
-                                # Xk = data[20:26]         # 6 doubles 48
-                                # Pk = data[20:26]         # 6 doubles 48
-                                # acc_bias_Xk = data[20:23]         # 3 doubles 24
-                                # gyro_bias_Xk = data[23:26]         # 3 doubles 24
-                                # vn_VTG = data[23:26]       # float 3
-                                
+                                # g_global_cnt_1khz = data[0]  # int
+                                timestamp = data[0]  # float 4
+                                dt_sec = data[1]  # float
+                                KFupdate = data[2]        # int 4
 
 
-                                elapsed_time = time.time() - start_time
+                                gyro_raw = data[3:6]        # 3 floats (deg/s) 12
+                                acc_raw = data[6:9]        # 3 floats (m/s2) 12
+                                gyro_calib = data[9:12]        # 3 floats (deg/s) 12
+                                acc_calib = data[12:15]        # 3 floats (m/s
+                                gyro_fullCorr = data[15:18]        # 3 floats (deg/s) 12
+                                # acc_fullCorr = data[12:15]        # 3 floats (m/s2) 12
+
+                                temp = data[18]         # float 4
+                                att = data[19:22]        # 3 floats 12 //
+                                vel = data[22:25]        # 3 floats 12
+                                pos = data[25:28]        # 3 double 24
+                                gpspos = data[28:31]    # 3 double 24
+                                
+                                # b_gyr = data[25:28]         # double 8 * 3
+                                # b_acc = data[9:12]          # double 8 * 3
+                                GyroBiasErr = data[31:34]     # float 4 * 3
+                                # AccBiasErr = data[15:18]    # double 8 * 3
+                                # P_b_g = data[12:15]         # double 8 * 3
+                                # P_att = data[15:18]         # double 8 * 3 
+                                # sf_z_candidate = data[34]     # float 4
+
+
+                                cur_time =time.time()
+                                elapsed_time = cur_time - start_time
                                 sec = int(elapsed_time)
                                 if sec != old_sec:
                                     # print(cnt_CAN)
+                                    # cnt_1khz = str(g_global_cnt_1khz).zfill(6)
+                                    # cnt_100hz = str(g_global_cnt_100hz).zfill(6)
                                     print(
-                                    # f"{cnt_CAN}"
-                                    # f"[{elapsed_time:f}]",
-                                    f"[{sec}]",
-                                    # f"[Gyro] gx: {gyro[0]:f},\tgy: {gyro[1]:f},\tgz: {gyro[2]:f},\t"
-                                    # f"[Acc]{acc[0]:f},\t {acc[1]:f},\t {acc[2]:f}, "
-                                    # # f"[Temp] {temp:f}, "
-                                    f"[Att] rol: {att[0]:.3f}, pit: {att[1]:.3f}, yaw: {att[2]:.3f},"
-                                    f"[Vel] Ve: {vel[0]:.3f}, Vn: {vel[1]:.3f}, Vu: {vel[2]:.3f}, "
-                                    f"[Pos] {pos[0]*R2D:.6f}, {pos[1]*R2D:.6f}, {pos[2]:.1f}, "
-                                    f"[GPSpos] {gpspos[0]:.6f}, {gpspos[1]:.6f}, {gpspos[2]:.1f}, "
-                                    f"[GPSvn] {gpsvel[0]:.3f}, {gpsvel[1]:.3f}, {gpsvel[2]:.3f}, "
-                                    # f"[Xk] {Xk[0]:.9f}, {Xk[1]:.9f}, {Xk[2]:.9f}, {Xk[3]:.9f}, {Xk[4]:.9f}, {Xk[5]:.9f}"
-                                    # f"[Head_VTG] {Head_VTG:.3f}, "
-                                    # f"[PoxFix] {posFix}, "
-                                    
-                                    # f"[VTGheading] {VTGheading:.3f}, "
-                                    # f"[f32Gyro] {f32Gyro[0]:.1f}, {f32Gyro[1]:.1f}, {f32Gyro[2]:.1f}, "
-                                    # f"[vn_VTG] {vn_VTG[0]:.3f}, {vn_VTG[1]:.3f}, {vn_VTG[2]:.3f} " #kph
-                                    # f"[MovStat] {moveStatus}"
+                                    # f"1khz[{cnt_1khz}], dt_sec[{dt_sec:.6f}], "
+                                    f"[{timestamp:.1f}]"
+                                    f"[{KFupdate}], "
+                                    # f"[gyr_raw] {gyro_raw[0]:f}, {gyro_raw[1]:f}, {gyro_raw[2]:f}, "
+                                    # f"[acc_raw] {acc_raw[0]:f}, {acc_raw[1]:f}, {acc_raw[2]:f}, "
+                                    # f"[gyr_calib] {gyro_calib[0]:f}, {gyro_calib[1]:f}, {gyro_calib[2]:f}, "
+                                    # f"[acc_calib] {acc_calib[0]:f}, {acc_calib[1]:f}, {acc_calib[2]:f}, "
+                                    # f"[gyr_fullCorr] {gyro_fullCorr[0]:f}, {gyro_fullCorr[1]:f}, {gyro_fullCorr[2]:f}, "
+                                    # f"[acc_KF] {acc_KF[0]:f}, {acc_KF[1]:f}, {acc_KF[2]:f}, "
 
-                                    # f"[Pk] {Pk[0]:.9f},{Pk[1]:.9f},{Pk[2]:.9f},{Pk[3]:.9f}, {Pk[4]:.9f}, {Pk[5]:.9f}"
-                                )
+                                    f"[temp] {temp:.2f}, "
+                                    f"[att] {att[0]:.3f}, {att[1]:.3f}, {att[2]:.3f},"
+                                    f"[vel] {vel[0]:.3f}, {vel[1]:.3f}, {vel[2]:.3f}, "
+                                    f"[pos] {pos[0]*R2D:.6f}, {pos[1]*R2D:.6f}, {pos[2]:.2f}, "
+                                    f"[g-pos] {gpspos[0]:.6f}, {gpspos[1]:.6f}, {gpspos[2]:.2f}, "
+                                    # f"[b_gyr] {b_gyr[0]:.12f}, {b_gyr[1]:.12f}, {b_gyr[2]:.12f}, "
+                                    # f"[b_acc] {b_acc[0]:.6f}, {b_acc[1]:.6f}, {b_acc[2]:.6f}, "
+                                    f"[GyroBiasErr] {GyroBiasErr[0]:f}, {GyroBiasErr[1]:f}, {GyroBiasErr[2]:f}, "
+                                    # f"[sf_z_candi] {sf_z_candidate:f}, "
+                                    # f"[AccBiasErr] {AccBiasErr[0]:f}, {AccBiasErr[1]:f}, {AccBiasErr[2]:f}, "
+                                    # f"[P_b_g] {P_b_g[0]:.12f}, {P_b_g[1]:.12f}, {P_b_g[2]:.12f}, "
+                                    # f"[P_att] {P_att[0]:.12f}, {P_att[1]:.12f}, {P_att[2]:.12f}"
+
+                                    )
                                                                     
                                     old_sec = sec
                                     cnt_CAN = 0
 
                                 cnt_CAN = cnt_CAN + 1
-                                # 콘솔 출력
-                                # print(
-                                #     # f"{cnt_CAN}"
-                                #     # f"[{elapsed_time:f}]",
-                                #     f"[{sec}]",
-                                #     # f"[Gyro] gx: {gyro[0]:f},\tgy: {gyro[1]:f},\tgz: {gyro[2]:f},\t"
-                                #     # f"[Acc]{acc[0]:f},\t {acc[1]:f},\t {acc[2]:f}, "
-                                #     # # f"[Temp] {temp:f}, "
-                                #     # f"[Att] rol: {att[0]:.3f}, pit: {att[1]:.3f}, yaw: {att[2]:.3f},"
-                                #     # f"[Vel] Ve: {vel[0]:.3f}, Vn: {vel[1]:.3f}, Vu: {vel[2]:.3f}, "
-                                #     # f"[Pos] {pos[0]*R2D:.6f}, {pos[1]*R2D:.6f}, {pos[2]:.1f}, "
-                                #     f"[GPSpos] {gpspos[0]:.6f}, {gpspos[1]:.6f}, {gpspos[2]:.1f}, "
-                                #     # f"[GPSvn] {gpsvel[0]:.3f}, {gpsvel[1]:.3f}, {gpsvel[2]:.3f}, "
-                                #     # f"[Xk] {Xk[0]:.9f}, {Xk[1]:.9f}, {Xk[2]:.9f}, {Xk[3]:.9f}, {Xk[4]:.9f}, {Xk[5]:.9f}"
-                                #     # f"[Head_VTG] {Head_VTG:.3f}, "
-                                #     # f"[PoxFix] {posFix}, "
-                                    
-                                #     # f"[VTGheading] {VTGheading:.3f}, "
-                                #     # f"[f32Gyro] {f32Gyro[0]:.1f}, {f32Gyro[1]:.1f}, {f32Gyro[2]:.1f}, "
-                                #     # f"[vn_VTG] {vn_VTG[0]:.3f}, {vn_VTG[1]:.3f}, {vn_VTG[2]:.3f} " #kph
-                                #     # f"[MovStat] {moveStatus}"
-
-                                #     # f"[Pk] {Pk[0]:.9f},{Pk[1]:.9f},{Pk[2]:.9f},{Pk[3]:.9f}, {Pk[4]:.9f}, {Pk[5]:.9f}"
-                                # )
 
                                 # CSV 라인
                                 csv_line = (
-                                    f"{elapsed_time:f},"  # timestamp
-                                    
-                                    f"{gyro[0]:f},"       #gyro
-                                    f"{gyro[1]:f},"       #gyro
-                                    f"{gyro[2]:f},"       #gyro
-                                    f"{acc[0]:f},"        #acc
-                                    f"{acc[1]:f},"        #acc
-                                    f"{acc[2]:f},"        #acc
-                                    # f"{temp:f},"            #temp
+                                    # f"{g_global_cnt_1khz:06d},{dt_sec:.6f},"
+                                    f"{timestamp:f},"
+                                    f"{dt_sec:.6f},"
+                                    f"{KFupdate},"
+                                    f"{gyro_raw[0]:f},{gyro_raw[1]:f},{gyro_raw[2]:f},"
+                                    f"{acc_raw[0]:f},{acc_raw[1]:f},{acc_raw[2]:f},"
+                                    f"{gyro_calib[0]:f},{gyro_calib[1]:f},{gyro_calib[2]:f},"
+                                    f"{acc_calib[0]:f},{acc_calib[1]:f},{acc_calib[2]:f},"
+                                    f"{gyro_fullCorr[0]:f},{gyro_fullCorr[1]:f},{gyro_fullCorr[2]:f},"
+                                    # f"{acc_KF[0]:f},{acc_KF[1]:f},{acc_KF[2]:f},"
+                                    f"{temp:.2f},"
+                                    f"{att[0]:.3f},{att[1]:.3f},{att[2]:.3f},"
+                                    f"{vel[0]:.3f},{vel[1]:.3f},{vel[2]:.3f},"
+                                    f"{pos[0]*R2D:.9f},{pos[1]*R2D:.9f},{pos[2]:.3f},"
+                                    f"{gpspos[0]:.9f},{gpspos[1]:.9f},{gpspos[2]:.3f},"
+                                    # f"{b_gyr[0]:.12f},{b_gyr[1]:.12f},"
+                                    # f"{b_acc[0]:.12f},{b_acc[1]:.12f},{b_acc[2]:.12f},"
+                                    f"{GyroBiasErr[0]:f},{GyroBiasErr[1]:f},{GyroBiasErr[2]:f},"
+                                    # f"{sf_z_candidate:f},"
+                                    # f"{AccBiasErr[0]:.12f},{AccBiasErr[1]:.12f},{AccBiasErr[2]:.12f},"
+                                    # f"{P_b_g[0]:.12f},{P_b_g[1]:.12f},{P_b_g[2]:.12f},"
+                                    # f"{P_att[0]:.12f},{P_att[1]:.12f},{P_att[2]:.12f}"
 
-                                    f"{att[0]:f},"        # Roll deg
-                                    f"{att[1]:f},"        # Pitch deg
-                                    f"{att[2]:f},"        # Yaw deg
-                                    f"{vel[0]:f},"        # Ve
-                                    f"{vel[1]:f},"        # Vn
-                                    f"{vel[2]:f},"        # Vu
-                                    f"{pos[0]*R2D:f},"    # lat deg 
-                                    f"{pos[1]*R2D:f},"    # lon deg
-                                    f"{pos[2]:.3f},"      # hgt
-                                    f"{gpspos[0]:f},"   # gps lat deg
-                                    f"{gpspos[1]:f},"   # gps lon deg
-                                    f"{gpspos[2]:.3f},"   # gps hgt m
-                                    f"{gpsvel[0]:f},"   # gps ve m/s
-                                    f"{gpsvel[1]:f},"   # gps vn m/s
-                                    f"{gpsvel[2]:f},"   # gps vu m/s
-                                    # f"{Xk[0]:f},"      # Xk: Acc x bias est
-                                    # f"{Xk[1]:f},"      # Xk: Acc y bias est
-                                    # f"{Xk[2]:f},"      # Xk: Acc z bias est
-                                    # f"{Xk[3]:f},"      # Xk: gyro x bias est
-                                    # f"{Xk[4]:f},"      # Xk: gyro y bias est
-                                    # f"{Xk[5]:f},"      # Xk: gyro z bias est
+                                    # f"{posfix},"
+                                    # f"{NorthHead:f},"
 
-                                    # f"{Head_VTG:f},"
-                                    # f"{posFix},"
-                                    # f"{GPSheading:f},"
-                                    
-                                    # f"{f32Gyro[0]:f}, {f32Gyro[1]:f}, {f32Gyro[2]:f},"
-                                    # f"{VTGSpeed:f},"
-                                    # f"{moveStatus}"
-                                    # f"{Pk[0]:.12f},"      # Pk: Acc x bias est
-                                    # f"{Pk[1]:.12f},"      # Pk: Acc y bias est
-                                    # f"{Pk[2]:.12f},"      # Pk: Acc z bias est
-                                    # f"{Pk[3]:.12f},"      # Pk: gyro x bias est
-                                    # f"{Pk[4]:.12f},"      # Pk: gyro y bias est
-                                    # f"{Pk[5]:.12f},"      # Pk: gyro z bias est
-
-                                    # f"{acc_bias_Xk[0]:.12f},"      #: Acc x bias est
-                                    # f"{acc_bias_Xk[1]:.12f},"      #: Acc y bias est
-                                    # f"{acc_bias_Xk[2]:.12f},"      #: Acc z bias est
-                                    # f"{gyro_bias_Xk[0]:.12f},"      # gyro x bias est
-                                    # f"{gyro_bias_Xk[1]:.12f},"      # gyro y bias est
-                                    # f"{gyro_bias_Xk[2]:.12f},"      # gyro z bias est
-                                    # f"{vn_VTG[0]:f},"   # VTG ve m/s
-                                    # f"{vn_VTG[1]:f},"   # VTG vn m/s
-                                    # f"{vn_VTG[2]:f},"   # VTG vu m/s
                                 )
                                 output_file.write(csv_line + "\n")
                                 output_file.flush()
@@ -445,21 +409,6 @@ def monitor_channel(channel_number, bitrate):
                                     x_data.append(0)
                                 else:
                                     x_data.append(x_data[-1] + x_increment)
-
-                                # Att(deg)
-                                # roll_data.append(att[0])
-                                # pitch_data.append(att[1])
-                                # yaw_data.append(att[2])
-
-                                # Vel(m/s)
-                                # ve_data.append(vel[0])
-                                # vn_data.append(vel[1])
-                                # vu_data.append(vel[2])
-
-                                # Pos
-                                # lat_data.append(pos[0] * R2D)
-                                # lon_data.append(pos[1] * R2D)
-                                # hgt_data.append(pos[2])
 
                                 # x_range만큼 초과 시 이전 데이터 제거
                                 if len(x_data) > x_range:
@@ -474,8 +423,8 @@ def monitor_channel(channel_number, bitrate):
                                     lon_data = lon_data[-x_range:]
                                     hgt_data = hgt_data[-x_range:]
 
-                                # 사용한 128바이트 삭제
-                                temp_buffer = temp_buffer[108:]
+                                # 사용한 패킷 길이만큼 삭제
+                                temp_buffer = temp_buffer[len_byte:]
 
                             status = READY
 
