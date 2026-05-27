@@ -299,16 +299,16 @@ def monitor_channel(channel_number, bitrate):
 
                         if status == END:
                             # 수신 Byte 갯수
-                            CANCDU_FIXED_FORMAT = '<f 3d 3f f'
+                            CANCDU_FIXED_FORMAT = '<3d 3f f'
                             CANCDU_FIXED_SIZE = struct.calcsize(CANCDU_FIXED_FORMAT)
 
                             if len(temp_buffer) >= CANCDU_FIXED_SIZE:
                                 data = struct.unpack_from(CANCDU_FIXED_FORMAT, temp_buffer, 0)
 
-                                timestamp = data[0]
-                                pos = data[1:4]
-                                att = data[4:7]
-                                speed = data[7]
+                                # timestamp = data[0]
+                                pos = data[0:3]
+                                att = data[3:6]
+                                speed = data[6]
 
                                 nmea_bytes = temp_buffer[CANCDU_FIXED_SIZE:]
                                 nmea_size = len(nmea_bytes)
@@ -325,7 +325,7 @@ def monitor_channel(channel_number, bitrate):
                                 sec = int(elapsed_time)
                                 if sec != old_sec:
                                     print(
-                                        f"[{timestamp:.2f}s] "
+                                        # f"[{timestamp:.2f}s] "
                                         f"Pos: {pos[0]:.6f}, {pos[1]:.6f}, {pos[2]:.3f}, "
                                         f"Att: {att[0]:.3f}, {att[1]:.3f}, {att[2]:.3f}, "
                                         f"Speed: {speed:.3f}m/s, "
@@ -340,7 +340,7 @@ def monitor_channel(channel_number, bitrate):
 
                                 # CSV 라인
                                 csv_line = (
-                                    f"{timestamp:.2f},"
+                                    # f"{timestamp:.2f},"
                                     f"{pos[0]:.6f},{pos[1]:.6f},{pos[2]:.3f},"
                                     f"{att[0]:.3f},{att[1]:.3f},{att[2]:.3f},"
                                     f"{speed:.1f},"

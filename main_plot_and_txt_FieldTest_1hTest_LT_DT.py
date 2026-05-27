@@ -245,7 +245,7 @@ def monitor_channel(channel_number, bitrate):
     nowTime = time.localtime()
 
     FilePath = (
-        f"DT_IEKF_EG1#2_offload_gyroBiasErr_{nowTime.tm_year % 100:02d}{nowTime.tm_mon:02d}{nowTime.tm_mday:02d}_"
+        f"LT_IEKF_EG1#1_init_pos_debug_{nowTime.tm_year % 100:02d}{nowTime.tm_mon:02d}{nowTime.tm_mday:02d}_"
         f"{nowTime.tm_hour:02d}{nowTime.tm_min:02d}{nowTime.tm_sec:02d}.txt"
         )
 
