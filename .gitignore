@@ -1,5 +1,6 @@
 myenv/
 backup_data/
 *.txt
+*.csv
 **/dist/
 **/build/
