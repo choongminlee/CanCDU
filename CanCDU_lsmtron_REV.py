@@ -61,7 +61,7 @@ END_ID = START_ID + FRAME_COUNT - 1
 REQUIRED_IDS = set(range(START_ID, END_ID + 1))
 CAN_CHANNEL_NUMBER = 0
 BITRATE = BITRATES["250K"]
-6
+
 now = time.localtime()
 output_path = (
     f"DT_LSMT_REV_{now.tm_year % 100:02d}{now.tm_mon:02d}{now.tm_mday:02d}_"
