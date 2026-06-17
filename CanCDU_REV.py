@@ -43,6 +43,7 @@ BITRATES = {
 # Edit message items only here. type is Python struct format: f=float32, i=int32.
 MESSAGE_FIELDS = [
     # name                 type scale               csv_fmt
+    ("time_gps_hhmmss",    "i", 1,                  "d"),
     ("timestamp_sec",      "f", 1.0,                ".3f"),
     # ("dt_sec",             "f", 1.0,                ".6f"),
     ("kf_update",          "i", 1,                  "d"),
@@ -71,19 +72,6 @@ MESSAGE_FIELDS = [
     # ("pos_fix",            "i", 1,                  "d"),
     # ("north_heading_deg",  "f", 1.0,                ".1f"),
     # ("ground_speed_mps",   "f", 1.0,                ".3f"),
-    # ("gyro_bias_x_deg",    "f", 1.0,                ".6f"),
-    # ("gyro_bias_y_deg",    "f", 1.0,                ".6f"),
-    # ("gyro_bias_z_deg",    "f", 1.0,                ".6f"),
-    # ("gps_dbg_dma_cbr1",   "i", 1,                  "d"),
-    # ("gps_dbg_dma_bytes_total", "i", 1,             "d"),
-    # ("gps_dbg_dma_restart_count", "i", 1,           "d"),
-    # ("gps_dbg_last_rx_start_status", "i", 1,        "d"),
-    # ("gps_dbg_uart_rx_state", "i", 1,               "d"),
-    # ("gps_dbg_uart_error_code", "i", 1,             "d"),
-    # ("gps_dbg_dma_state", "i", 1,                   "d"),
-    # ("gps_dbg_dma_error_code", "i", 1,              "d"),
-    # ("gps_dbg_usart_isr", "i", 1,                   "d"),
-    # ("gps_dbg_usart_cr3", "i", 1,                   "d"),
 ]
 
 PAYLOAD_STRUCT = struct.Struct("<" + "".join(field_type for _, field_type, _, _ in MESSAGE_FIELDS))
@@ -192,6 +180,7 @@ with open(output_path, mode="w", newline="", encoding="utf-8") as output_file:
                                 if sec != old_sec:
                                     get = values.get
                                     print(
+                                        f"[{get('time_gps_hhmmss', 0)}] "
                                         f"[{get('timestamp_sec', 0.0):.1f}] "
                                         # f"[dt {get('dt_sec', 0.0):.6f}s] "
                                         f"[{int(get('kf_update', 0))}] "
@@ -215,19 +204,6 @@ with open(output_path, mode="w", newline="", encoding="utf-8") as output_file:
                                         f"{get('gps_lon_deg', 0.0):.7f}, "
                                         f"{get('gps_hgt_m', 0.0):.2f}, ",
 
-
-
-                                        # f"[gpsdbg] cbr1 {int(get('gps_dbg_dma_cbr1', 0))}, "
-                                        # f"bytes {int(get('gps_dbg_dma_bytes_total', 0))}, "
-                                        # f"rst {int(get('gps_dbg_dma_restart_count', 0))}, "
-                                        # f"start {int(get('gps_dbg_last_rx_start_status', 0))}, "
-                                        # f"rxst {int(get('gps_dbg_uart_rx_state', 0))}, "
-                                        # f"uerr 0x{(int(get('gps_dbg_uart_error_code', 0)) & 0xFFFFFFFF):08X}, "
-                                        # f"dmast {int(get('gps_dbg_dma_state', 0))}, "
-                                        # f"derr 0x{(int(get('gps_dbg_dma_error_code', 0)) & 0xFFFFFFFF):08X}, "
-                                        # f"isr 0x{(int(get('gps_dbg_usart_isr', 0)) & 0xFFFFFFFF):08X}, "
-                                        # f"cr3 0x{(int(get('gps_dbg_usart_cr3', 0)) & 0xFFFFFFFF):08X}, "
-                                        # f"Rows: {packet_count}, short: {short_frames}",
                                         flush=True,
                                     )
                                     old_sec = sec
