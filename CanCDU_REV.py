@@ -45,15 +45,22 @@ MESSAGE_FIELDS = [
     # name                 type scale               csv_fmt
     ("time_gps_hhmmss",    "i", 1,                  "d"),
     ("timestamp_sec",      "f", 1.0,                ".3f"),
-    # ("dt_sec",             "f", 1.0,                ".6f"),
-    ("kf_update",          "i", 1,                  "d"),
-    ("gyro_x_dps",         "f", 1.0,                ".6f"),
-    ("gyro_y_dps",         "f", 1.0,                ".6f"),
-    ("gyro_z_dps",         "f", 1.0,                ".6f"),
-    ("acc_x_mpss",         "f", 1.0,                ".6f"),
-    ("acc_y_mpss",         "f", 1.0,                ".6f"),
-    ("acc_z_mpss",         "f", 1.0,                ".6f"),
-    ("temp_c",             "f", 1.0,                ".2f"),
+    ("sample0_dt_sec",     "f", 1.0,                ".6f"),
+    ("sample0_gyro_x_dps", "f", 1.0,                ".6f"),
+    ("sample0_gyro_y_dps", "f", 1.0,                ".6f"),
+    ("sample0_gyro_z_dps", "f", 1.0,                ".6f"),
+    ("sample0_acc_x_mpss", "f", 1.0,                ".6f"),
+    ("sample0_acc_y_mpss", "f", 1.0,                ".6f"),
+    ("sample0_acc_z_mpss", "f", 1.0,                ".6f"),
+    ("sample0_temp_c",     "f", 1.0,                ".2f"),
+    ("sample1_dt_sec",     "f", 1.0,                ".6f"),
+    ("sample1_gyro_x_dps", "f", 1.0,                ".6f"),
+    ("sample1_gyro_y_dps", "f", 1.0,                ".6f"),
+    ("sample1_gyro_z_dps", "f", 1.0,                ".6f"),
+    ("sample1_acc_x_mpss", "f", 1.0,                ".6f"),
+    ("sample1_acc_y_mpss", "f", 1.0,                ".6f"),
+    ("sample1_acc_z_mpss", "f", 1.0,                ".6f"),
+    ("sample1_temp_c",     "f", 1.0,                ".2f"),
     ("roll_deg",           "f", 1.0,                ".3f"),
     ("pitch_deg",          "f", 1.0,                ".3f"),
     ("yaw_deg",            "f", 1.0,                ".3f"),
@@ -66,12 +73,27 @@ MESSAGE_FIELDS = [
     ("gps_lat_deg",        "i", 1.0 / 10000000.0,   ".7f"),
     ("gps_lon_deg",        "i", 1.0 / 10000000.0,   ".7f"),
     ("gps_hgt_m",          "f", 1.0,                ".3f"),
+<<<<<<< Updated upstream
     # ("gps_ve_mps",         "f", 1.0,                ".3f"),
     # ("gps_vn_mps",         "f", 1.0,                ".3f"),
     # ("gps_vu_mps",         "f", 1.0,                ".3f"),
     # ("pos_fix",            "i", 1,                  "d"),
     # ("north_heading_deg",  "f", 1.0,                ".1f"),
     # ("ground_speed_mps",   "f", 1.0,                ".3f"),
+=======
+    ("gps_ve_mps",         "f", 1.0,                ".3f"),
+    ("gps_vn_mps",         "f", 1.0,                ".3f"),
+    ("gps_vu_mps",         "f", 1.0,                ".3f"),
+    ("pos_fix",            "i", 1,                  "d"),
+    ("north_heading_deg",  "f", 1.0,                ".1f"),
+    ("ground_speed_mps",   "f", 1.0,                ".3f"),
+    ("gyro_bias_err_x_dps", "f", 1.0,                ".6f"),
+    ("gyro_bias_err_y_dps", "f", 1.0,                ".6f"),
+    ("gyro_bias_err_z_dps", "f", 1.0,                ".6f"),
+    ("accl_bias_err_x_mpss", "f", 1.0,                ".6f"),
+    ("accl_bias_err_y_mpss", "f", 1.0,                ".6f"),
+    ("accl_bias_err_z_mpss", "f", 1.0,                ".6f"),
+>>>>>>> Stashed changes
 ]
 
 PAYLOAD_STRUCT = struct.Struct("<" + "".join(field_type for _, field_type, _, _ in MESSAGE_FIELDS))
@@ -182,6 +204,7 @@ with open(output_path, mode="w", newline="", encoding="utf-8") as output_file:
                                     print(
                                         f"[{get('time_gps_hhmmss', 0)}] "
                                         f"[{get('timestamp_sec', 0.0):.1f}] "
+<<<<<<< Updated upstream
                                         # f"[dt {get('dt_sec', 0.0):.6f}s] "
                                         f"[{int(get('kf_update', 0))}] "
                                         f"[gyro] {get('gyro_x_dps', 0.0):.3f}, "
@@ -191,6 +214,17 @@ with open(output_path, mode="w", newline="", encoding="utf-8") as output_file:
                                         f"{get('acc_y_mpss', 0.0):.3f}, "
                                         f"{get('acc_z_mpss', 0.0):.3f}, "
                                         f"[temp] {get('temp_c', 0.0):.2f}C, "
+=======
+                                        # f"[s0 dt] {get('sample0_dt_sec', 0.0):.6f}s, "
+                                        # f"[s1 dt] {get('sample1_dt_sec', 0.0):.6f}s, "
+                                        # f"[s0 gyro] {get('sample0_gyro_x_dps', 0.0):.3f}, "
+                                        # f"{get('sample0_gyro_y_dps', 0.0):.3f}, "
+                                        # f"{get('sample0_gyro_z_dps', 0.0):.3f}, "
+                                        # f"[s1 gyro] {get('sample1_gyro_x_dps', 0.0):.3f}, "
+                                        # f"{get('sample1_gyro_y_dps', 0.0):.3f}, "
+                                        # f"{get('sample1_gyro_z_dps', 0.0):.3f}, "
+                                        f"[temp] {get('sample1_temp_c', 0.0):.2f}C, "
+>>>>>>> Stashed changes
                                         f"[att] {get('roll_deg', 0.0):.3f}, "
                                         f"{get('pitch_deg', 0.0):.3f}, "
                                         f"{get('yaw_deg', 0.0):.3f}, "
