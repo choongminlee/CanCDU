@@ -86,6 +86,14 @@ MESSAGE_FIELDS = [
     ("accl_bias_err_x_mpss", "f", 1.0,                ".6f"),
     ("accl_bias_err_y_mpss", "f", 1.0,                ".6f"),
     ("accl_bias_err_z_mpss", "f", 1.0,                ".6f"),
+    ("mtron_rx_1",         "B", 1,                  "d"),
+    ("mtron_rx_2",         "B", 1,                  "d"),
+    ("mtron_rx_3",         "B", 1,                  "d"),
+    ("mtron_rx_4",         "B", 1,                  "d"),
+    ("mtron_rx_5",         "B", 1,                  "d"),
+    ("mtron_rx_6",         "B", 1,                  "d"),
+    ("mtron_rx_7",         "B", 1,                  "d"),
+    ("mtron_rx_8",         "B", 1,                  "d"),
 ]
 
 PAYLOAD_STRUCT = struct.Struct("<" + "".join(field_type for _, field_type, _, _ in MESSAGE_FIELDS))
@@ -97,6 +105,9 @@ END_ID = START_ID + FRAME_COUNT - 1
 REQUIRED_IDS = set(range(START_ID, END_ID + 1))
 CHANNEL_NUMBER = 0
 BITRATE = BITRATES["250K"]
+TX_ID = 0x18FFD75B
+tx_payload = bytearray([0, 1, 2, 3, 4, 5, 6, 7])
+TX_PERIOD_SEC = 0.05
 
 now = time.localtime()
 output_path = (
@@ -132,12 +143,23 @@ with open(output_path, mode="w", newline="", encoding="utf-8") as output_file:
         ch = None
         try:
             ch = canlib.openChannel(CHANNEL_NUMBER, bitrate=BITRATE)
+            ch.iocontrol.local_txecho = False
             ch.setBusOutputControl(canlib.canDRIVER_NORMAL)
             ch.busOn()
+            next_tx_time = time.time()
+            cnt = 0
             print("Connected to CAN channel.", flush=True)
 
             while True:
                 try:
+                    # TX dummy to EGIv1_3
+                    now_time = time.time()
+                    if now_time >= next_tx_time:
+                        cnt = cnt % 20 + 1
+                        tx_payload[0] = cnt
+                        ch.write_raw(TX_ID, tx_payload, canlib.canMSG_EXT)
+                        next_tx_time = now_time + TX_PERIOD_SEC
+
                     frame = ch.read(timeout=50)
                     if frame.id < START_ID or frame.id > MAX_ID:
                         continue
@@ -197,14 +219,14 @@ with open(output_path, mode="w", newline="", encoding="utf-8") as output_file:
                                         f"[{get('time_gps_hhmmss', 0)}] "
                                         f"[{get('timestamp_sec', 0.0):.1f}] "
                                         f"[{int(get('kf_update', 0))}] "
-                                        f"[s0 dt] {get('sample0_dt_sec', 0.0):.6f}s, "
-                                        f"[s1 dt] {get('sample1_dt_sec', 0.0):.6f}s, "
-                                        f"[s0 gyro] {get('sample0_gyro_x_dps', 0.0):.3f}, "
-                                        f"{get('sample0_gyro_y_dps', 0.0):.3f}, "
-                                        f"{get('sample0_gyro_z_dps', 0.0):.3f}, "
-                                        f"[s1 gyro] {get('sample1_gyro_x_dps', 0.0):.3f}, "
-                                        f"{get('sample1_gyro_y_dps', 0.0):.3f}, "
-                                        f"{get('sample1_gyro_z_dps', 0.0):.3f}, "
+                                        # f"[s0 dt] {get('sample0_dt_sec', 0.0):.6f}s, "
+                                        # f"[s1 dt] {get('sample1_dt_sec', 0.0):.6f}s, "
+                                        # f"[s0 gyro] {get('sample0_gyro_x_dps', 0.0):.3f}, "
+                                        # f"{get('sample0_gyro_y_dps', 0.0):.3f}, "
+                                        # f"{get('sample0_gyro_z_dps', 0.0):.3f}, "
+                                        # f"[s1 gyro] {get('sample1_gyro_x_dps', 0.0):.3f}, "
+                                        # f"{get('sample1_gyro_y_dps', 0.0):.3f}, "
+                                        # f"{get('sample1_gyro_z_dps', 0.0):.3f}, "
                                         f"[temp] {get('sample1_temp_c', 0.0):.2f}C, "
                                         f"[att] {get('roll_deg', 0.0):.3f}, "
                                         f"{get('pitch_deg', 0.0):.3f}, "
@@ -218,6 +240,14 @@ with open(output_path, mode="w", newline="", encoding="utf-8") as output_file:
                                         f"[g-pos] {get('gps_lat_deg', 0.0):.7f}, "
                                         f"{get('gps_lon_deg', 0.0):.7f}, "
                                         f"{get('gps_hgt_m', 0.0):.2f}, ",
+                                        f"[mtron_rx] {get('mtron_rx_1', 0)}, "
+                                        f"{get('mtron_rx_2',0)}, "
+                                        f"{get('mtron_rx_3',0)}, "
+                                        f"{get('mtron_rx_4',0)}, "
+                                        f"{get('mtron_rx_5',0)}, "
+                                        f"{get('mtron_rx_6',0)}, "
+                                        f"{get('mtron_rx_7',0)}, "
+                                        f"{get('mtron_rx_8',0)}",
 
                                         flush=True,
                                     )
