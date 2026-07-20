@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import struct
+import threading
 
 
 if hasattr(sys, "_MEIPASS"):
@@ -109,6 +110,32 @@ TX_ID = 0x18FFD75B
 tx_payload = bytearray([0, 1, 2, 3, 4, 5, 6, 7])
 TX_PERIOD_SEC = 0.05
 
+# lsmtron can Tx thread(20Hz)
+def tx_loop(ch, can_lock, stop_event):
+    cnt = 0
+    next_tx_time = time.perf_counter()
+
+    while not stop_event.is_set():
+        now_time = time.perf_counter()
+        if now_time >= next_tx_time:
+            cnt = cnt % 20 + 1
+            tx_payload[0] = cnt
+
+            #같은 CAN channel을 RX 루프의 ch.read()와 동시에 접근하지 않도록 lock하고, 그 다음 송신함
+            try:
+                with can_lock:
+                    ch.write_raw(TX_ID, tx_payload, canlib.canMSG_EXT)
+            except canlib.CanError:
+                stop_event.set()
+                break
+
+            #다음 목표 송신시각을 이전 목표시각 + 50 ms로 갱신함(현재 기준 X->20Hz 가능한 비슷하게 만들어주기 위함)
+            next_tx_time += TX_PERIOD_SEC
+            if next_tx_time <= now_time:
+                next_tx_time = now_time + TX_PERIOD_SEC
+        else:
+            time.sleep(min(0.001, next_tx_time - now_time))
+
 now = time.localtime()
 output_path = (
     f"LT_IEKF_REV_{now.tm_year % 100:02d}{now.tm_mon:02d}{now.tm_mday:02d}_"
@@ -146,21 +173,18 @@ with open(output_path, mode="w", newline="", encoding="utf-8") as output_file:
             ch.iocontrol.local_txecho = False
             ch.setBusOutputControl(canlib.canDRIVER_NORMAL)
             ch.busOn()
-            next_tx_time = time.time()
-            cnt = 0
+            stop_tx = threading.Event()
+            can_lock = threading.Lock()
+            tx_thread = threading.Thread(target=tx_loop, args=(ch, can_lock, stop_tx), daemon=True)
+            tx_thread.start()
             print("Connected to CAN channel.", flush=True)
 
             while True:
                 try:
-                    # TX dummy to EGIv1_3
-                    now_time = time.time()
-                    if now_time >= next_tx_time:
-                        cnt = cnt % 20 + 1
-                        tx_payload[0] = cnt
-                        ch.write_raw(TX_ID, tx_payload, canlib.canMSG_EXT)
-                        next_tx_time = now_time + TX_PERIOD_SEC
-
-                    frame = ch.read(timeout=50)
+                    if stop_tx.is_set():
+                        break
+                    with can_lock:
+                        frame = ch.read(timeout=1)
                     if frame.id < START_ID or frame.id > MAX_ID:
                         continue
 
@@ -264,12 +288,17 @@ with open(output_path, mode="w", newline="", encoding="utf-8") as output_file:
                     pass
                 except canlib.CanError as error:
                     print(f"CAN error: {error}", flush=True)
+                    stop_tx.set()
                     break
 
         except canlib.CanError as error:
             print(f"Connection failed: {error}. Retrying in 5 seconds...", flush=True)
             time.sleep(5)
         finally:
+            if "stop_tx" in locals():
+                stop_tx.set()
+            if "tx_thread" in locals():
+                tx_thread.join(timeout=1.0)
             if ch is not None:
                 try:
                     ch.busOff()
