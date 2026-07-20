@@ -4,3 +4,6 @@ backup_data/
 *.csv
 **/dist/
 **/build/
+*.png
+__pycache__/
+*.pyc
