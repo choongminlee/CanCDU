@@ -41,8 +41,8 @@ BITRATES = {
     "10K": canlib.Bitrate.BITRATE_10K,
 }
 
-# Edit message items only here. type is Python struct format: f=float32, i=int32.
-MESSAGE_FIELDS = [
+# Edit payload items only here. type is Python struct format: f=float32, i=int32, x=pad byte.
+PAYLOAD_FIELDS = [
     # name                 type scale               csv_fmt
     ("time_gps_hhmmss",    "i", 1,                  "d"),
     ("timestamp_sec",      "f", 1.0,                ".3f"),
@@ -87,17 +87,17 @@ MESSAGE_FIELDS = [
     ("accl_bias_err_x_mpss", "f", 1.0,                ".6f"),
     ("accl_bias_err_y_mpss", "f", 1.0,                ".6f"),
     ("accl_bias_err_z_mpss", "f", 1.0,                ".6f"),
-    ("mtron_rx_1",         "B", 1,                  "d"),
-    ("mtron_rx_2",         "B", 1,                  "d"),
-    ("mtron_rx_3",         "B", 1,                  "d"),
-    ("mtron_rx_4",         "B", 1,                  "d"),
-    ("mtron_rx_5",         "B", 1,                  "d"),
-    ("mtron_rx_6",         "B", 1,                  "d"),
-    ("mtron_rx_7",         "B", 1,                  "d"),
-    ("mtron_rx_8",         "B", 1,                  "d"),
+    ("hmi_acu_Lv",          "B", 1,                  "d"),
+    ("_hmi_padding",        "3x", 1,                 None), # 1byte전송 시 padding 처리 필요(CAN_communication에서 1byte 자료형 읽고 그 다음 변수 읽을 때 C와 달리 python에서는 자동 padding안함(뒤에 자료형 깨짐))
+    ("hmi_wheel_speed_kph",  "f", 1.0,               ".5f"),
+    ("hmi_wheel_angle_deg",  "f", 1.0,               ".5f"),
+
 ]
 
-PAYLOAD_STRUCT = struct.Struct("<" + "".join(field_type for _, field_type, _, _ in MESSAGE_FIELDS))
+MESSAGE_FIELDS = [
+    field for field in PAYLOAD_FIELDS if not field[1].endswith("x")
+]
+PAYLOAD_STRUCT = struct.Struct("<" + "".join(field_type for _, field_type, _, _ in PAYLOAD_FIELDS))
 PAYLOAD_SIZE = PAYLOAD_STRUCT.size
 FRAME_SIZE = 8
 START_ID = 0x101
@@ -107,7 +107,7 @@ REQUIRED_IDS = set(range(START_ID, END_ID + 1))
 CHANNEL_NUMBER = 0
 BITRATE = BITRATES["250K"]
 TX_ID = 0x18FFD75B
-tx_payload = bytearray([0, 1, 2, 3, 4, 5, 6, 7])
+tx_payload = bytearray([0, 0, 0, 0, 0, 0, 0, 0])
 TX_PERIOD_SEC = 0.05
 
 # lsmtron can Tx thread(20Hz)
@@ -119,7 +119,14 @@ def tx_loop(ch, can_lock, stop_event):
         now_time = time.perf_counter()
         if now_time >= next_tx_time:
             cnt = cnt % 20 + 1
-            tx_payload[0] = cnt
+            tx_payload[0] = cnt  # reserved
+            tx_payload[1] = 0x01
+            # tx_payload[2] = 0x00 # reserved
+            tx_payload[3] = 0x7F
+            tx_payload[4] = 0xFF
+
+            wheel_angle_adc = 508 # 479(0.378337) # 508(4.7536845)
+            tx_payload[5:7] = wheel_angle_adc.to_bytes(2, byteorder="big", signed=True)
 
             #같은 CAN channel을 RX 루프의 ch.read()와 동시에 접근하지 않도록 lock하고, 그 다음 송신함
             try:
@@ -263,15 +270,10 @@ with open(output_path, mode="w", newline="", encoding="utf-8") as output_file:
                                         f"{get('nav_hgt_m', 0.0):.3f}, "
                                         f"[g-pos] {get('gps_lat_deg', 0.0):.7f}, "
                                         f"{get('gps_lon_deg', 0.0):.7f}, "
-                                        f"{get('gps_hgt_m', 0.0):.2f}, ",
-                                        f"[mtron_rx] {get('mtron_rx_1', 0)}, "
-                                        f"{get('mtron_rx_2',0)}, "
-                                        f"{get('mtron_rx_3',0)}, "
-                                        f"{get('mtron_rx_4',0)}, "
-                                        f"{get('mtron_rx_5',0)}, "
-                                        f"{get('mtron_rx_6',0)}, "
-                                        f"{get('mtron_rx_7',0)}, "
-                                        f"{get('mtron_rx_8',0)}",
+                                        f"{get('gps_hgt_m', 0.0):.2f}, "
+                                        f"[hmi] {get('hmi_acu_Lv', 0)}, "
+                                        f"{get('hmi_wheel_speed_kph', 0.0):.6f}, "
+                                        f"{get('hmi_wheel_angle_deg', 0.0):.6f} ",
 
                                         flush=True,
                                     )
