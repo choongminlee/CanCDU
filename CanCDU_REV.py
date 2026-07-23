@@ -122,10 +122,10 @@ def tx_loop(ch, can_lock, stop_event):
             tx_payload[0] = cnt  # reserved
             tx_payload[1] = 0x01
             # tx_payload[2] = 0x00 # reserved
-            tx_payload[3] = 0x7F
-            tx_payload[4] = 0xFF
+            tx_payload[3] = 0x00 #0x7F
+            tx_payload[4] = 0x00 #0xFF
 
-            wheel_angle_adc = 508 # 479(0.378337) # 508(4.7536845)
+            wheel_angle_adc = 479 # 479(0.378337) # 508(4.7536845)
             tx_payload[5:7] = wheel_angle_adc.to_bytes(2, byteorder="big", signed=True)
 
             #같은 CAN channel을 RX 루프의 ch.read()와 동시에 접근하지 않도록 lock하고, 그 다음 송신함
@@ -271,10 +271,10 @@ with open(output_path, mode="w", newline="", encoding="utf-8") as output_file:
                                         f"[g-pos] {get('gps_lat_deg', 0.0):.7f}, "
                                         f"{get('gps_lon_deg', 0.0):.7f}, "
                                         f"{get('gps_hgt_m', 0.0):.2f}, "
-                                        f"[hmi] {get('hmi_acu_Lv', 0)}, "
-                                        f"{get('hmi_wheel_speed_kph', 0.0):.6f}, "
-                                        f"{get('hmi_wheel_angle_deg', 0.0):.6f} ",
-
+                                        # f"[hmi] {get('hmi_acu_Lv', 0)}, "
+                                        # f"{get('hmi_wheel_speed_kph', 0.0):.6f}, "
+                                        # f"{get('hmi_wheel_angle_deg', 0.0):.6f} "
+                                        ,
                                         flush=True,
                                     )
                                     old_sec = sec

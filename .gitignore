@@ -7,3 +7,4 @@ backup_data/
 *.png
 __pycache__/
 *.pyc
+**.md
