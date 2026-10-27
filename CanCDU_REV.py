@@ -108,6 +108,14 @@ PAYLOAD_FIELDS = [
     ("accl_bias_err_x_mpss", "f", 1.0,                ".6f"),
     ("accl_bias_err_y_mpss", "f", 1.0,                ".6f"),
     ("accl_bias_err_z_mpss", "f", 1.0,                ".6f"),
+
+    # HMI prev ---
+    ("prev_hmi_acu_Lv",          "B", 1,                  "d"),
+    ("_prev_hmi_padding",        "3x", 1,                 None), # 1byte전송 시 padding 처리 필요(CAN_communication에서 1byte 자료형 읽고 그 다음 변수 읽을 때 C와 달리 python에서는 자동 padding안함(뒤에 자료형 깨짐))
+    ("prev_hmi_wheel_speed_kph",  "f", 1.0,               ".5f"),
+    ("prev_hmi_wheel_angle_deg",  "f", 1.0,               ".5f"),
+    # ------------
+
     ("hmi_acu_Lv",          "B", 1,                  "d"),
     ("_hmi_padding",        "3x", 1,                 None), # 1byte전송 시 padding 처리 필요(CAN_communication에서 1byte 자료형 읽고 그 다음 변수 읽을 때 C와 달리 python에서는 자동 padding안함(뒤에 자료형 깨짐))
     ("hmi_wheel_speed_kph",  "f", 1.0,               ".5f"),
@@ -146,7 +154,7 @@ def tx_loop(ch, can_lock, stop_event):
             tx_payload[3] = 0x00 
             tx_payload[4] = 0xF0 #0x09 
 
-            wheel_angle_adc = 559 # 515 # 559(4.501164) - MT9
+            wheel_angle_adc = 511 # 515 # 559(4.501164) - MT9
             tx_payload[5:7] = wheel_angle_adc.to_bytes(2, byteorder="big", signed=True)
 
             #같은 CAN channel을 RX 루프의 ch.read()와 동시에 접근하지 않도록 lock하고, 그 다음 송신함
@@ -268,6 +276,7 @@ with open(output_path, mode="w", newline="", encoding="utf-8") as output_file:
                                 if sec != old_sec:
                                     get = values.get
                                     print(
+                                        f"[Fix: {get('pos_fix', 0)}] "
                                         f"[{TEST_MODE.get(get('test_mode', 0), 'Unknown')}] "
                                         f"[{BGZ_UPDATE_MODE.get(get('bgz_update_mode', 0), 'Unknown')}] "
                                         f"[{get('time_gps_hhmmss', 0):06d}] "
@@ -276,9 +285,12 @@ with open(output_path, mode="w", newline="", encoding="utf-8") as output_file:
                                         f"[{KF_UPDATE_FLAG.get(get('kf_update', 0), 'Unknown')}] "
                                         # f"[s0 dt] {get('sample0_dt_sec', 0.0):.6f}s, "
                                         # f"[s1 dt] {get('sample1_dt_sec', 0.0):.6f}s, "
-                                        # f"[s0 gyro] {get('sample0_gyro_x_dps', 0.0):.3f}, "
-                                        # f"{get('sample0_gyro_y_dps', 0.0):.3f}, "
-                                        # f"{get('sample0_gyro_z_dps', 0.0):.3f}, "
+                                        f"[s0 gyro] {get('sample0_gyro_x_dps', 0.0):.3f}, "
+                                        f"{get('sample0_gyro_y_dps', 0.0):.3f}, "
+                                        f"{get('sample0_gyro_z_dps', 0.0):.3f}, "
+                                        f"[s0 accl] {get('sample0_acc_x_mpss', 0.0):.3f}, "
+                                        f"{get('sample0_acc_y_mpss', 0.0):.3f}, "
+                                        f"{get('sample0_acc_z_mpss', 0.0):.3f}, "
                                         # f"[s1 gyro] {get('sample1_gyro_x_dps', 0.0):.3f}, "
                                         # f"{get('sample1_gyro_y_dps', 0.0):.3f}, "
                                         # f"{get('sample1_gyro_z_dps', 0.0):.3f}, "
