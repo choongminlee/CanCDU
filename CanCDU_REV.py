@@ -121,6 +121,36 @@ PAYLOAD_FIELDS = [
     ("hmi_wheel_speed_kph",  "f", 1.0,               ".5f"),
     ("hmi_wheel_angle_deg",  "f", 1.0,               ".5f"),
 
+    # verification
+    ("del_yaw_cog_deg", "f", 1.0, ".6f"),
+    ("del_yaw_gyro_deg", "f", 1.0, ".6f"),
+    # ("R_cog_yaw", "f", 1.0, ".16f"),
+
+    # test
+    # ("dummy1",  "f", 1.0,               ".5f"),
+    # ("dummy2",  "f", 1.0,               ".5f"),
+    # ("dummy3",  "f", 1.0,               ".5f"),
+    # ("dummy4",  "f", 1.0,               ".5f"),
+    # ("dummy5",  "f", 1.0,               ".5f"),
+    # ("dummy6",  "f", 1.0,               ".5f"),
+    # ("dummy7",  "f", 1.0,               ".5f"),
+    # ("dummy8",  "f", 1.0,               ".5f"),
+    # ("dummy9",  "f", 1.0,               ".5f"),
+    # ("dummy10",  "f", 1.0,               ".5f"),
+    # ("dummy11",  "f", 1.0,               ".5f"),
+    # ("dummy12",  "f", 1.0,               ".5f"),
+    # ("dummy13",  "f", 1.0,               ".5f"),
+    # ("dummy14",  "f", 1.0,               ".5f"),
+    # ("dummy15",  "f", 1.0,               ".5f"),
+    # ("dummy16",  "f", 1.0,               ".5f"),
+    # ("dummy17",  "f", 1.0,               ".5f"),
+    # ("dummy18",  "f", 1.0,               ".5f"),
+    # ("dummy19",  "f", 1.0,               ".5f"),
+    # ("dummy20",  "f", 1.0,               ".5f"),
+    # ("dummy21",  "f", 1.0,               ".5f"),
+    # ("dummy22",  "f", 1.0,               ".5f"),
+    # ("dummy23",  "f", 1.0,               ".5f"),
+    # ("dummy24",  "f", 1.0,               ".5f"),
 ]
 
 MESSAGE_FIELDS = [
@@ -178,7 +208,7 @@ output_path = (
     f"{now.tm_hour:02d}{now.tm_min:02d}{now.tm_sec:02d}.txt"
 )
 
-MAX_FRAME_COUNT = 32
+MAX_FRAME_COUNT = 64  # 32
 MAX_ID = START_ID + MAX_FRAME_COUNT - 1
 
 rx_payload = bytearray(MAX_FRAME_COUNT * FRAME_SIZE)
@@ -199,6 +229,7 @@ with open(output_path, mode="w", newline="", encoding="utf-8") as output_file:
     print(
         f"Expecting CAN IDs 0x{START_ID:03X}..0x{END_ID:03X}, "
         f"payload={PAYLOAD_SIZE}B, frames={FRAME_COUNT}",
+        f"(MAX_FRAME_COUNT={MAX_FRAME_COUNT})",
         flush=True,
     )
 
@@ -310,7 +341,10 @@ with open(output_path, mode="w", newline="", encoding="utf-8") as output_file:
                                         f"[g-speed] {get('ground_speed_mps', 0.0) * 3.6:.2f}, "
                                         f"[hmi] {get('hmi_acu_Lv', 0)}, "
                                         f"{get('hmi_wheel_speed_kph', 0.0):.2f}, "
-                                        f"{get('hmi_wheel_angle_deg', 0.0):.6f} "
+                                        f"{get('hmi_wheel_angle_deg', 0.0):.6f}, "
+                                        f"[del_yaw] {get('del_yaw_cog_deg', 0.0):.6f}, "
+                                        f"{get('del_yaw_gyro_deg', 0.0):.6f}, "
+                                        # f"[R COG yaw]{get('R_cog_yaw', 0.0):.16f} "
                                         ,
                                         flush=True,
                                     )
