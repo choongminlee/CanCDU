@@ -121,6 +121,9 @@ PAYLOAD_FIELDS = [
     ("hmi_wheel_speed_kph",  "f", 1.0,               ".5f"),
     ("hmi_wheel_angle_deg",  "f", 1.0,               ".5f"),
 
+    # 26.11.11 DT
+    ("sigma_from_R_cog_yaw_deg", "f", 1.0, ".12f"),
+    ("sigma_from_P_yaw_deg", "f", 1.0, ".12f"),
 ]
 
 MESSAGE_FIELDS = [
@@ -310,7 +313,9 @@ with open(output_path, mode="w", newline="", encoding="utf-8") as output_file:
                                         f"[g-speed] {get('ground_speed_mps', 0.0) * 3.6:.2f}, "
                                         f"[hmi] {get('hmi_acu_Lv', 0)}, "
                                         f"{get('hmi_wheel_speed_kph', 0.0):.2f}, "
-                                        f"{get('hmi_wheel_angle_deg', 0.0):.6f} "
+                                        f"{get('hmi_wheel_angle_deg', 0.0):.6f}, "
+                                        f"[sigma cog yaw] {get('sigma_from_R_cog_yaw_deg', 0.0):.12f}, "
+                                        f"[sigma P yaw] {get('sigma_from_P_yaw_deg', 0.0):.12f}"
                                         ,
                                         flush=True,
                                     )
